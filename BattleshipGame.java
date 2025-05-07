@@ -168,8 +168,11 @@ class Board {
     public boolean attack(int x, int y) {
         attacks.add(new int[] { x, y });
         for (Ship ship : ships) {
-            if (ship.getX() == x && ship.getY() == y) {
-                ships.remove(ship);
+            if (ship.getTiles().contains(findTile(x, y))) {
+                ship.shipAttacked();
+                if (ship.checkIfDestroyed()){
+                    ships.remove(ship);
+                }
                 notifyObservers();
                 return true;
             }
@@ -191,6 +194,13 @@ class Board {
             observer.update();
         }
     }
+
+    private boolean checkIfLost() {
+        if (ships.isEmpty()){ 
+            return true;
+        }
+        return false;
+    }
 }
 
 // Ship Class
@@ -198,6 +208,7 @@ class Ship {
     private List<Tile> tiles = new ArrayList<>();
     private int x, y;
     private int type, size;
+    private int attackCount = 0;
     private boolean vertical;
 
     public Ship(int x, int y, int type, boolean vertical) {
@@ -228,6 +239,10 @@ class Ship {
         return size;
     }
 
+    public int getAttackCount() {
+        return attackCount;
+    }
+
     public boolean getVertical() {
         return vertical;
     }
@@ -252,6 +267,17 @@ class Ship {
                     return true;
                 }
             }
+        }
+        return false;
+    }
+
+    public void shipAttacked() {
+        attackCount++;
+    }
+
+    public boolean checkIfDestroyed() {
+        if (attackCount == size) {
+            return true;
         }
         return false;
     }
