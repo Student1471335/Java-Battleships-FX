@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 import javafx.util.Duration;
+import javax.management.StandardEmitterMBean;
 
 // Observer Pattern: Board observers
 interface BoardObserver {
@@ -47,16 +48,9 @@ class RandomPlacement implements ShipPlacementStrategy {
                 for (Ship checkShip : board.ships) {
                     if (checkShip.checkIfCombined(ship, board)) {
                         shipNotCombined = false;
-                        System.out.print("hihello");
                         break;
                     }
                 }
-            }
-            for (Ship shipCheck : board.ships) {
-                
-            System.out.print(shipCheck.getTiles());
-            System.err.println(i);
-            System.out.println("\n");
             }
         board.addShip(ship);
         }
@@ -167,10 +161,12 @@ class Board {
 
     public boolean attack(int x, int y) {
         attacks.add(new int[] { x, y });
+        findTile(x, y).setHit(true);
         for (Ship ship : ships) {
             if (ship.getTiles().contains(findTile(x, y))) {
                 ship.shipAttacked();
                 if (ship.checkIfDestroyed()){
+                    System.out.println(SunkMy(ship.getType()));
                     ships.remove(ship);
                 }
                 notifyObservers();
@@ -195,11 +191,28 @@ class Board {
         }
     }
 
-    private boolean checkIfLost() {
+    public boolean checkIfLost() {
         if (ships.isEmpty()){ 
             return true;
         }
         return false;
+    }
+
+    public String SunkMy(int type) {
+        switch (type) {
+            case 0:
+                return "You sunk my destroyer!";
+            case 1:
+                return "You sunk my submarine!";
+            case 2:
+                return "You sunk my cruiser!";
+            case 3:
+                return "You sunk my battleship!";
+            case 4:
+                return "You sunk my carrier!";
+            default:
+                return "You sunk my error!";
+        }
     }
 }
 
@@ -314,6 +327,7 @@ public class BattleshipGame extends Application implements BoardObserver {
     private static final int GRID_SIZE = 10;
     private final Board playerBoard = new Board(new RandomPlacement());
     private final Board enemyBoard = new Board(new RandomPlacement());
+    private boolean enemyAttacked = true;
     private final Canvas playerCanvas = new Canvas(GRID_SIZE * TILE_SIZE, GRID_SIZE * TILE_SIZE);
     private final Canvas enemyCanvas = new Canvas(GRID_SIZE * TILE_SIZE, GRID_SIZE * TILE_SIZE);
     private final Image shipImage = new Image("ship_placeholder.png");
@@ -338,18 +352,44 @@ public class BattleshipGame extends Application implements BoardObserver {
     private void handlePlayerAttack(MouseEvent event) {
         int x = (int) event.getX() / TILE_SIZE;
         int y = (int) event.getY() / TILE_SIZE;
-        if (!enemyBoard.attack(x, y)) {
+        if (!enemyBoard.findTile(x, y).getHit() && enemyAttacked){
+            if (!enemyBoard.attack(x, y)) {
+                enemyAttacked = false;
+            }
+            else {
+                if (enemyBoard.checkIfLost()) {
+                    System.out.println("won :D");
+                    System.exit(0);
+                }
+            }
             enemyTurn();
         }
     }
 
     private void enemyTurn() {
         Timeline timeline = new Timeline(new KeyFrame(Duration.seconds(1), event -> {
-            int[] attackCoords = attackStrategy.getAttackCoordinates(playerBoard);
-            playerBoard.attack(attackCoords[0], attackCoords[1]);
+            while(true) {
+                int[] attackCoords = attackStrategy.getAttackCoordinates(playerBoard);
+                System.out.print(attackCoords[0]);
+                    System.out.println(",");
+                    System.out.print(attackCoords[1]);
+                    System.out.print("\n\n");
+                if (!playerBoard.findTile(attackCoords[0], attackCoords[1]).getHit()) {
+                    if (playerBoard.attack(attackCoords[0], attackCoords[1])) {
+                        if (playerBoard.checkIfLost()) {
+                            System.out.println("lost :(");
+                            System.exit(0);
+                        }
+                    }
+                    
+                    break;
+                }
+                
+            }
         }));
         timeline.setCycleCount(1);
         timeline.play();
+        timeline.setOnFinished(event -> enemyAttacked = true);
     }
 
     @Override
@@ -380,17 +420,27 @@ public class BattleshipGame extends Application implements BoardObserver {
                     gcPlayer.drawImage(shipImage, (ship.getX() + i) * TILE_SIZE, (ship.getY()) * TILE_SIZE, TILE_SIZE, TILE_SIZE);
                 }
             }
-            System.out.println(ship.getSize());
         }
 
         // Draw attack attempts
-        gcPlayer.setFill(Color.RED);
-        gcEnemy.setFill(Color.BLUE);
+        
         for (int[] attack : playerBoard.getAttacks()) {
+            if (playerBoard.findTile(attack[0], attack[1]).getShip()) {
+                gcPlayer.setFill(Color.RED);
+            }
+            else {
+                gcPlayer.setFill(Color.BLUE);
+            }
             gcPlayer.fillOval(attack[0] * TILE_SIZE + TILE_SIZE / 4, attack[1] * TILE_SIZE + TILE_SIZE / 4,
                     TILE_SIZE / 2, TILE_SIZE / 2);
         }
         for (int[] attack : enemyBoard.getAttacks()) {
+            if (enemyBoard.findTile(attack[0], attack[1]).getShip()) {
+                gcEnemy.setFill(Color.RED);
+            }
+            else {
+                gcEnemy.setFill(Color.BLUE);
+            }
             gcEnemy.fillOval(attack[0] * TILE_SIZE + TILE_SIZE / 4, attack[1] * TILE_SIZE + TILE_SIZE / 4,
                     TILE_SIZE / 2, TILE_SIZE / 2);
         }
