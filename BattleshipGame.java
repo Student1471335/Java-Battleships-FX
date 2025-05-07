@@ -1,3 +1,4 @@
+import com.sun.jdi.connect.AttachingConnector;
 import java.lang.classfile.ClassFile;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
@@ -68,6 +69,71 @@ class EasyAttackStrategy implements AttackStrategy {
 
     @Override
     public int[] getAttackCoordinates(Board board) {
+        return new int[] { random.nextInt(10), random.nextInt(10) };
+    }
+}
+
+//Medium AI
+class MediumAttackStrategy implements AttackStrategy {
+    private final Random random = new Random();
+
+    @Override
+    public int[] getAttackCoordinates(Board board) {
+        boolean shipHit = false;
+        Tile shipHitTile = null;
+        for (Tile tile : board.getTiles()) {
+            if (tile.getHit() && tile.getShip()) {
+                int tilesHit = 0;
+                for (Tile checkTile : getTilesAroundTile(tile, board)) {
+                    if (checkTile == null || checkTile.getHit()) {
+                        tilesHit++; 
+                    }
+                }
+                if (tilesHit == 4) {
+                    shipHit = false;
+                }
+                else {
+                    shipHit = true;
+                    shipHitTile = tile;
+                    break;
+                }
+            }
+        }
+        if (shipHit) {
+            List<Tile> tiles = getTilesAroundTile(shipHitTile, board);
+            Tile returnTile = null;
+            while (returnTile == null) {
+                returnTile = tiles.get(random.nextInt(4));
+            }
+            return new int[] { returnTile.getX(), returnTile.getY() };
+        }
+        return new int[] { random.nextInt(10), random.nextInt(10) };
+    }
+
+    public List<Tile> getTilesAroundTile(Tile tile, Board board) {
+        List<Tile> tiles = new ArrayList<Tile>();
+        
+        tiles.add(board.findTile(tile.getX() - 1, tile.getY()));
+        tiles.add(board.findTile(tile.getX() + 1, tile.getY()));
+        tiles.add(board.findTile(tile.getX(), tile.getY() - 1));
+        tiles.add(board.findTile(tile.getX(), tile.getY() + 1));
+
+        return tiles;
+    }
+}
+
+// Unfair AI
+class UnfairAttackStrategy implements AttackStrategy {
+    private final Random random = new Random();
+
+    @Override
+    public int[] getAttackCoordinates(Board board) {
+        for (Ship ship : board.ships) {
+            if (ship.getAttackCount() > 0) {
+                Tile shipTile = ship.getTiles().get(random.nextInt(ship.getSize()));
+                return new int[] { shipTile.getX(), shipTile.getY() };
+            }
+        }
         return new int[] { random.nextInt(10), random.nextInt(10) };
     }
 }
@@ -196,6 +262,10 @@ class Board {
             return true;
         }
         return false;
+    }
+
+    public List<Tile> getTiles() {
+        return tiles;
     }
 
     public String SunkMy(int type) {
@@ -331,7 +401,7 @@ public class BattleshipGame extends Application implements BoardObserver {
     private final Canvas playerCanvas = new Canvas(GRID_SIZE * TILE_SIZE, GRID_SIZE * TILE_SIZE);
     private final Canvas enemyCanvas = new Canvas(GRID_SIZE * TILE_SIZE, GRID_SIZE * TILE_SIZE);
     private final Image shipImage = new Image("ship_placeholder.png");
-    private final AttackStrategy attackStrategy = new EasyAttackStrategy();
+    private final AttackStrategy attackStrategy = new UnfairAttackStrategy();
 
     @Override
     public void start(Stage stage) {
