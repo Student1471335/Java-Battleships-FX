@@ -1,3 +1,4 @@
+import java.lang.classfile.ClassFile;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
 import javafx.application.Application;
@@ -29,16 +30,33 @@ class RandomPlacement implements ShipPlacementStrategy {
     @Override
     public void placeShips(Board board) {
         Random random = new Random();
-        Ship ship;
+        Ship ship = new Ship();
         for (int i = 0; i < 5; i++) { 
-            while (true) { 
+            boolean shipInBounds = false; //checks to make sure the ship is in bounds
+            boolean shipNotCombined = false; //checks to make sure the ship is not combined with another ship
+            while (!shipInBounds || !shipNotCombined) {
+                shipInBounds = false;
+                shipNotCombined = true; 
                 ship = new Ship(random.nextInt(10), random.nextInt(10), i, random.nextInt(2)==1);
                 if (ship.getVertical() && 10 - ship.getY() >= ship.getSize()) {
-                    break;
+                    shipInBounds = true;
                 }
                 else if(!ship.getVertical() && 10 - ship.getX() >= ship.getSize()) {
-                    break;
+                    shipInBounds = true;
                 }
+                for (Ship checkShip : board.ships) {
+                    if (checkShip.checkIfCombined(ship, board)) {
+                        shipNotCombined = false;
+                        System.out.print("hihello");
+                        break;
+                    }
+                }
+            }
+            for (Ship shipCheck : board.ships) {
+                
+            System.out.print(shipCheck.getTiles());
+            System.err.println(i);
+            System.out.println("\n");
             }
         board.addShip(ship);
         }
@@ -100,21 +118,51 @@ class Board {
     public final List<Ship> ships = new ArrayList<>();
     private final List<int[]> attacks = new ArrayList<>();
     private final List<BoardObserver> observers = new ArrayList<>();
-    private List<Tile> tiles = new ArrayList<>();
+    private final List<Tile> tiles = new ArrayList<>();
     private final ShipPlacementStrategy placementStrategy;
 
     public Board(ShipPlacementStrategy strategy) {
         this.placementStrategy = strategy;
+        createTiles();
         placementStrategy.placeShips(this);
     }
 
     public void addShip(Ship ship) {
         ships.add(ship);
         notifyObservers();
+        addShipToTiles(ship);
     }
 
-    public void addShipToTiles(){
+    public void addShipToTiles(Ship ship){
+        List<Tile> shipTiles = new ArrayList<>();
+        for (int i = 0; i < ship.getSize(); i++) {
+            if (ship.getVertical()) {
+                findTile(ship.getX(), ship.getY() + i).setShip(true);
+                shipTiles.add(findTile(ship.getX(), ship.getY() + i));
+            }
+            else {
+                findTile(ship.getX() + i, ship.getY()).setShip(true);
+                shipTiles.add(findTile(ship.getX() + i, ship.getY()));
+            }
+        }
+        ship.setTiles(shipTiles);
+    }
 
+    private void createTiles() {
+        for (int i = 0; i < 10; i++) {
+            for (int j = 0; j < 10; j++) {
+                tiles.add(new Tile(i, j));
+            }
+        }
+    }
+
+    public Tile findTile(int x, int y) {
+        for (Tile tile : tiles) {
+            if (tile.getX() == x && tile.getY() == y) {
+                return tile;
+            }
+        }
+        return null;
     }
 
     public boolean attack(int x, int y) {
@@ -147,6 +195,7 @@ class Board {
 
 // Ship Class
 class Ship {
+    private List<Tile> tiles = new ArrayList<>();
     private int x, y;
     private int type, size;
     private boolean vertical;
@@ -157,6 +206,10 @@ class Ship {
         this.type = type;
         this.vertical = vertical;
         sizeByType();
+    }
+
+    public Ship(){
+
     }
 
     public int getX() {
@@ -177,6 +230,30 @@ class Ship {
 
     public boolean getVertical() {
         return vertical;
+    }
+
+    public List<Tile> getTiles(){
+        return tiles;
+    }
+
+    public void setTiles(List<Tile> set) {
+        tiles = set;
+    }
+
+    public boolean checkIfCombined(Ship ship, Board board) {
+        for (int i = 0; i < ship.size; i++) {
+            if (ship.vertical) {
+                if (tiles.contains(board.findTile(ship.x, ship.y + i))) {
+                    return true;
+                }
+            }
+            else {
+                if (tiles.contains(board.findTile(ship.x + i, ship.y))) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     // This function calculates the size of the ship by its type
