@@ -440,10 +440,6 @@ public class BattleshipGame extends Application implements BoardObserver {
         Timeline timeline = new Timeline(new KeyFrame(Duration.seconds(1), event -> {
             while(true) {
                 int[] attackCoords = attackStrategy.getAttackCoordinates(playerBoard);
-                System.out.print(attackCoords[0]);
-                    System.out.println(",");
-                    System.out.print(attackCoords[1]);
-                    System.out.print("\n\n");
                 if (!playerBoard.findTile(attackCoords[0], attackCoords[1]).getHit()) {
                     if (playerBoard.attack(attackCoords[0], attackCoords[1])) {
                         if (playerBoard.checkIfLost()) {
